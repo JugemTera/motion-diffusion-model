@@ -178,6 +178,20 @@ bash prepare/download_recognition_unconstrained_models.sh
 ```
 </details>
 
+<details>
+  <summary><b>Alternative: Docker</b></summary>
+
+A Docker image with the same environment (Python 3.7, PyTorch 1.7.1 + CUDA 11.0, CLIP, spaCy model) is defined in `docker-shell/`. Requires Docker with the NVIDIA Container Toolkit.
+
+```shell
+bash docker-shell/build.sh   # build image `mdm:latest` (once)
+bash docker-shell/run.sh     # start container `mdm` with GPU + repo mounted at /workspace
+bash docker-shell/exec.sh    # extra shell in the running container
+```
+
+Run the `prepare/download_*.sh` steps and everything below from inside the container; `save/`, `dataset/`, `body_models/` live on the host via the mount.
+</details>
+
 ### 2. Get data
 
 **Text to Motion** 

@@ -1,0 +1,61 @@
+# Docker runtime requirements for motion-diffusion-model.
+# Pip translation of environment.yml (conda env "mdm", Python 3.7). Versions are kept
+# identical to environment.yml wherever a cp37 wheel exists on PyPI.
+# torch / torchvision / torchaudio (1.7.1+cu110) are installed separately in the
+# Dockerfile from the PyTorch index, and chumpy is installed last (needs numpy at build).
+
+# --- conda section of environment.yml ----------------------------------------
+numpy==1.21.5
+scipy==1.7.3
+matplotlib==3.1.3
+scikit-learn==1.0.2
+h5py==3.7.0
+pillow==9.2.0
+spacy==3.3.1
+pydantic==1.8.2
+trimesh==3.15.3
+wandb==0.15.12
+gdown==4.5.1
+tqdm==4.64.1
+requests==2.28.1
+joblib==1.1.0
+beautifulsoup4==4.11.1
+jinja2==3.1.2
+filelock==3.8.0
+packaging==21.3
+
+# --- pip section of environment.yml ------------------------------------------
+blis==0.7.8
+click==8.1.3
+confection==0.0.2
+ftfy==6.1.1
+importlib-metadata==5.0.0
+lxml==4.9.1
+murmurhash==1.0.8
+preshed==3.0.7
+pycryptodomex==3.15.0
+regex==2022.9.13
+smplx==0.1.28
+srsly==2.4.4
+thinc==8.0.17
+typing-extensions==4.1.1
+urllib3==1.26.12
+wasabi==0.10.1
+wcwidth==0.2.5
+
+# --- imported by the code but missing from environment.yml -------------------
+# clearml      : train/train_platforms.py (README: `pip install clearml`)
+# moviepy 1.x  : sample/generate.py, plot_script.py use `moviepy.editor` (removed in 2.0)
+# blobfile     : train/training_loop.py
+# transformers : model/BERT/BERT_encoder.py (DistilBERT text encoder for DiP);
+#                4.30.x is the last release supporting Python 3.7; safetensors is pinned
+#                to the last release shipping cp37 wheels (newer ones need a Rust build)
+# pandas       : eval/unconstrained/evaluate.py
+# pyyaml       : eval/a2m/tools.py
+clearml
+moviepy==1.0.3
+blobfile
+transformers==4.30.2
+safetensors==0.4.1
+pandas==1.3.5
+pyyaml
