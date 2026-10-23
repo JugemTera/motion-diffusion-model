@@ -181,7 +181,7 @@ bash prepare/download_recognition_unconstrained_models.sh
 <details>
   <summary><b>Alternative: Docker</b></summary>
 
-A Docker image with the same environment (Python 3.7, PyTorch 1.7.1 + CUDA 11.0, CLIP, spaCy model) is defined in `docker-shell/`. Requires Docker with the NVIDIA Container Toolkit.
+A Docker image with the same environment (Python 3.7, PyTorch 1.7.1 + CUDA 11.0, CLIP, spaCy model) is defined in `docker-shell/`. Requires Docker with the NVIDIA Container Toolkit. Prebuilt: `docker pull jugemtera/mdm:latest`.
 
 ```shell
 bash docker-shell/build.sh   # build image `mdm:latest` (once)
