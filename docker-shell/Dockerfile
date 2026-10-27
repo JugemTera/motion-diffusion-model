@@ -1,84 +1,47 @@
-# motion-diffusion-model (MDM) runtime image
-# Base: CUDA 11.0 + cuDNN8 (matches pytorch=1.7.1 cuda11.0 in environment.yml).
-# Ubuntu 20.04 with CPython 3.7 built from source, matching the "Python 3.7" the repo is
-# tested on (README "Getting started").
-FROM nvidia/cuda:11.0.3-cudnn8-devel-ubuntu20.04
+# motion-diffusion-model (MDM) runtime image (CUDA 12.1 build for Hopper GPUs such as the
+# H200 on ABCI 3.0).
+#
+# environment.yml pins Python 3.7 + PyTorch 1.7.1 (CUDA 11.0). Those PyTorch builds carry
+# kernels only up to sm_80 and fail on H100/H200 (sm_90) with
+# "CUDA error: no kernel image is available for execution on the device", so this image
+# uses the +cu121 build of PyTorch 2.4.1 on Ubuntu 22.04 / Python 3.10 instead. The repo
+# code (MDM, Guo et al. evaluators, CLIP ViT-B/32, spaCy, DistilBERT for DiP) runs unchanged.
+#
+# Build (the docker-shell directory is the context; nothing is copied in):
+#   bash docker-shell/build.sh                  -> mdm:cu121
+# Singularity on ABCI (after `docker push jugemtera/mdm:cu121`):
+#   singularity build mdm.sif docker://jugemtera/mdm:cu121
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    # Headless matplotlib (environment.yml pulls pyqt for a GUI backend; not needed here).
-    MPLBACKEND=Agg
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
 # --- System dependencies ------------------------------------------------------
-# git: required for `pip install git+https://github.com/openai/CLIP.git`.
-# ffmpeg/libgl1/libglib2.0: needed by moviepy, trimesh rendering and the SMPL fitting code.
-# wget/unzip/curl: used by prepare/download_*.sh.
-# lib*-dev: build inputs for the CPython 3.7 source build below.
+# python3 (3.10 on jammy), git for `git+https://` pip requirements (CLIP),
+# ffmpeg/libgl1/libglib2.0 for moviepy / trimesh rendering / the SMPL fitting code,
+# wget/curl/unzip for prepare/download_*.sh (gdown is installed via pip).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        git \
-        wget \
-        curl \
-        unzip \
-        ca-certificates \
-        ffmpeg \
-        libgl1-mesa-glx \
-        libglib2.0-0 \
-        libssl-dev \
-        zlib1g-dev \
-        libbz2-dev \
-        liblzma-dev \
-        libffi-dev \
-        libsqlite3-dev \
-        libreadline-dev \
-        libncursesw5-dev \
-        uuid-dev \
-    && rm -rf /var/lib/apt/lists/*
+        python3 python3-dev python3-pip build-essential git wget curl unzip ca-certificates ffmpeg libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* && ln -sf /usr/bin/python3 /usr/bin/python
 
-# --- Python 3.7 ---------------------------------------------------------------
-# Python 3.7 is EOL: focal ships 3.8 and the deadsnakes PPA has dropped 3.7, so build
-# CPython 3.7 from source into /usr/local (becomes the default `python`/`python3`/`pip`).
-ARG PYTHON_VERSION=3.7.17
-RUN cd /tmp \
-    && wget -q "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" \
-    && tar xzf "Python-${PYTHON_VERSION}.tgz" \
-    && cd "Python-${PYTHON_VERSION}" \
-    && ./configure --prefix=/usr/local --enable-shared --with-ensurepip=install \
-        LDFLAGS="-Wl,-rpath,/usr/local/lib" \
-    && make -j"$(nproc)" \
-    && make altinstall \
-    && ln -s /usr/local/bin/python3.7 /usr/local/bin/python3 \
-    && ln -s /usr/local/bin/python3.7 /usr/local/bin/python \
-    && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3 \
-    && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip \
-    && cd / && rm -rf /tmp/Python-*
-
-# pip 24.0 is the last release supporting 3.7; keep setuptools<69 for the same reason and
-# so legacy sdists (chumpy) still build.
-RUN python -m pip install --upgrade "pip==24.0" "setuptools<69" wheel
-
-WORKDIR /workspace
+# Modern pip; keep setuptools<70 so legacy sdists (chumpy) still build.
+RUN python -m pip install --upgrade "pip<25" "setuptools<70" wheel
 
 # --- Python dependencies ------------------------------------------------------
-# PyTorch 1.7.1 + CUDA 11.0 wheels from the PyTorch index (same versions as environment.yml).
-RUN python -m pip install \
-        --index-url https://download.pytorch.org/whl/cu110 \
-        torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2
+# PyTorch 2.4.1 (+cu121) wheels from the PyTorch index; numpy 1.x (chumpy and parts of the
+# repo use np.float etc., and torch 2.4 is built against numpy 1.x).
+RUN pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip install "numpy==1.23.5"
 
-# Everything else (pins mirror environment.yml; see docker-shell/requirements.txt).
-COPY docker-shell/requirements.txt /tmp/requirements.txt
-RUN python -m pip install -r /tmp/requirements.txt
+# Everything the repo imports: training / sampling / evaluation, moviepy 1.x for
+# `moviepy.editor` (removed in 2.0), decorator<5 for moviepy, blobfile (training_loop),
+# spaCy + en_core_web_sm (text processing), transformers (DistilBERT encoder for DiP),
+# chumpy last with build isolation off (its setup.py imports numpy).
+RUN pip install scipy==1.10.1 matplotlib==3.7.5 tqdm pyyaml h5py pandas joblib scikit-learn==1.3.2 tensorboard wandb \
+        ftfy regex "git+https://github.com/openai/CLIP.git" smplx==0.1.28 trimesh==3.23.5 \
+        imageio==2.31.6 imageio-ffmpeg "moviepy==1.0.3" "decorator<5" blobfile gdown spacy==3.7.5 "transformers==4.44.2" \
+    && pip install --no-build-isolation "chumpy==0.70" \
+    && python -m spacy download en_core_web_sm
 
-# chumpy last: it imports numpy in setup.py, so disable build isolation.
-RUN python -m pip install --no-build-isolation "chumpy==0.70"
-
-# README "Setup conda env" post-install steps.
-RUN python -m spacy download en_core_web_sm \
-    && python -m pip install git+https://github.com/openai/CLIP.git
-
-# Quick sanity check that the core stack imported cleanly and CUDA build is present.
-RUN python -c "import torch, torchvision, clip, spacy, smplx, chumpy, transformers; \
-print('torch', torch.__version__, '| cuda build', torch.version.cuda)"
+WORKDIR /workspace
 
 CMD ["/bin/bash"]

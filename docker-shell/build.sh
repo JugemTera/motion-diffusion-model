@@ -2,17 +2,15 @@
 # Build the MDM (motion-diffusion-model) Docker image.
 set -euo pipefail
 
-# Repo root = parent of this docker-shell directory. Used as the build context so
-# the Dockerfile can COPY requirements.txt.
+# The docker-shell directory itself is the build context: the Dockerfile copies nothing
+# from the repo, so the (large) repo root is never sent to the Docker daemon.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+IMAGE_NAME="${IMAGE_NAME:-mdm:cu121}"
 
-IMAGE_NAME="${IMAGE_NAME:-mdm:latest}"
-
-echo "Building ${IMAGE_NAME} (context: ${REPO_ROOT})"
+echo "Building ${IMAGE_NAME} (context: ${SCRIPT_DIR})"
 docker build \
     -f "${SCRIPT_DIR}/Dockerfile" \
     -t "${IMAGE_NAME}" \
-    "${REPO_ROOT}"
+    "${SCRIPT_DIR}"
 
 echo "Done. Image: ${IMAGE_NAME}"

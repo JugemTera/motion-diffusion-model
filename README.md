@@ -181,10 +181,10 @@ bash prepare/download_recognition_unconstrained_models.sh
 <details>
   <summary><b>Alternative: Docker</b></summary>
 
-A Docker image with the same environment (Python 3.7, PyTorch 1.7.1 + CUDA 11.0, CLIP, spaCy model) is defined in `docker-shell/`. Requires Docker with the NVIDIA Container Toolkit. Prebuilt: `docker pull jugemtera/mdm:latest`.
+A Docker image for this repo is defined in `docker-shell/`: Ubuntu 22.04, Python 3.10, PyTorch 2.4.1 (`+cu121`), CLIP, spaCy model, transformers. It targets Hopper GPUs (H100/H200, sm_90), which the PyTorch 1.7.1 build in `environment.yml` cannot run on; the repo code runs unchanged. Requires Docker with the NVIDIA Container Toolkit. Prebuilt: `docker pull jugemtera/mdm:cu121`.
 
 ```shell
-bash docker-shell/build.sh   # build image `mdm:latest` (once)
+bash docker-shell/build.sh   # build image `mdm:cu121` (once)
 bash docker-shell/run.sh     # start container `mdm` with GPU + repo mounted at /workspace
 bash docker-shell/exec.sh    # extra shell in the running container
 ```

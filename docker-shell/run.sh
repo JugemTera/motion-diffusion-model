@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-IMAGE_NAME="${IMAGE_NAME:-mdm:latest}"
+IMAGE_NAME="${IMAGE_NAME:-mdm:cu121}"
 CONTAINER_NAME="${CONTAINER_NAME:-mdm}"
 
 # Reuse an already-running container if present.
